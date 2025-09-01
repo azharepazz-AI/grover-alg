@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Classical vs Quantum Search (Grover)</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #141e30, #243b55);
+      color: white;
+      min-height: 100vh;
+      padding: 30px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 2.5em;
+      text-shadow: 2px 2px 5px rgba(0,0,0,0.6);
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    .demo-section {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(12px);
+      border-radius: 15px;
+      padding: 25px;
+      margin: 20px 0;
+      border: 1px solid rgba(255,255,255,0.15);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    }
+    .input-section {
+      text-align: center;
+      margin: 20px 0;
+    }
+    input {
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      font-size: 16px;
+      width: 220px;
+      margin-right: 10px;
+    }
+    button {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      background: linear-gradient(45deg, #00c6ff, #0072ff);
+      color: white;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    button:hover { transform: translateY(-2px); }
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 20px;
+    }
+    .method {
+      background: rgba(255,255,255,0.05);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .classical { border-left: 4px solid #ff6b6b; }
+    .quantum { border-left: 4px solid #4ecdc4; }
+    .progress-bar {
+      width: 100%;
+      height: 18px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 12px 0;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      transition: width 0.3s;
+    }
+    .classical-progress { background: linear-gradient(90deg, #ff6b6b, #ee5a52); }
+    .quantum-progress { background: linear-gradient(90deg, #4ecdc4, #44a08d); }
+    .result-display {
+      background: rgba(0,0,0,0.35);
+      padding: 15px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      min-height: 80px;
+    }
+    .factors {
+      font-size: 18px;
+      font-weight: bold;
+      color: #ffd93d;
+    }
+    .footer {
+      margin-top: 25px;
+      text-align: center;
+      font-size: 14px;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Classical vs Quantum Search (Grover’s Algorithm)</h1>
+
+    <div class="demo-section">
+      <h2>Enter Range N:</h2>
+      <div class="input-section">
+        <input type="number" id="rangeInput" placeholder="e.g. 100" min="4" max="100000" value="100">
+        <button onclick="startSearch()">Start Search</button>
+      </div>
+    </div>
+
+    <div class="comparison-grid">
+      <div class="method classical">
+        <h3>🐌 Classical Search</h3>
+        <div class="progress-bar"><div class="progress-fill classical-progress" id="classicalProgress"></div></div>
+        <div class="result-display" id="classicalResult">Waiting...</div>
+      </div>
+
+      <div class="method quantum">
+        <h3>⚡ Quantum (Grover’s)</h3>
+        <div class="progress-bar"><div class="progress-fill quantum-progress" id="quantumProgress"></div></div>
+        <div class="result-display" id="quantumResult">Waiting...</div>
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h3>Final Results:</h3>
+      <div class="result-display" id="finalResult">Run the demo to compare performance.</div>
+    </div>
+
+    <div class="footer">
+      ⚠️ Note: This is a visualization. Grover’s gives a quadratic speedup (O(√N)) vs classical O(N).
+    </div>
+  </div>
+
+  <script>
+    function startSearch() {
+      const N = parseInt(document.getElementById('rangeInput').value);
+      if (!N || N < 4) {
+        alert("Please enter N ≥ 4");
+        return;
+      }
+
+      // pick a hidden number randomly
+      const hidden = Math.floor(Math.random() * N) + 1;
+
+      // Reset UI
+      document.getElementById('classicalResult').textContent = "Searching...";
+      document.getElementById('quantumResult').textContent = "Processing...";
+      document.getElementById('finalResult').textContent = "Race in progress...";
+      document.getElementById('classicalProgress').style.width = "0%";
+      document.getElementById('quantumProgress').style.width = "0%";
+
+      // Classical brute force simulation
+      let classicalSteps = 0;
+      let i = 1;
+      const classicalInterval = setInterval(() => {
+        classicalSteps++;
+        let progress = (i / N) * 100;
+        document.getElementById('classicalProgress').style.width = progress + "%";
+        document.getElementById('classicalResult').innerHTML =
+          `🔍 Checking ${i}...<br>Steps: ${classicalSteps}`;
+        if (i === hidden) {
+          clearInterval(classicalInterval);
+          document.getElementById('classicalResult').innerHTML =
+            `✅ Found ${hidden} in <span class="factors">${classicalSteps}</span> steps`;
+          checkComplete("classical", classicalSteps, hidden, N);
+        }
+        i++;
+      }, 20);
+
+      // Quantum Grover simulation
+      let quantumSteps = Math.ceil(Math.sqrt(N));
+      let qProgress = 0;
+      let qStep = 0;
+      const quantumInterval = setInterval(() => {
+        qStep++;
+        qProgress = (qStep / quantumSteps) * 100;
+        document.getElementById('quantumProgress').style.width = Math.min(qProgress, 100) + "%";
+        document.getElementById('quantumResult').innerHTML =
+          `⚛️ Quantum iteration ${qStep} of ${quantumSteps}`;
+        if (qStep >= quantumSteps) {
+          clearInterval(quantumInterval);
+          document.getElementById('quantumResult').innerHTML =
+            `✅ Found ${hidden} in about <span class="factors">${quantumSteps}</span> steps`;
+          checkComplete("quantum", quantumSteps, hidden, N);
+        }
+      }, 50);
+    }
+
+    let results = {};
+    function checkComplete(method, steps, hidden, N) {
+      results[method] = steps;
+      if (results.classical && results.quantum) {
+        const speedup = Math.round(results.classical / results.quantum);
+        document.getElementById('finalResult').innerHTML =
+          `<h4>🏁 Search Results (N=${N}, Hidden=${hidden}):</h4>
+           <p>🐌 Classical: ${results.classical} steps<br>
+           ⚡ Grover’s Quantum: ${results.quantum} steps<br>
+           🚀 Speedup ≈ ${speedup}x faster</p>`;
+        results = {};
+      }
+    }
+  </script>
+</body>
+</html>
